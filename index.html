@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ekologiya: So'z Qidiruvi</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Nunito & Fredoka for friendly Explorer look -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-top: #d8f3dc;
+            --bg-bottom: #b7e4c7;
+            --card-bg: rgba(255, 255, 255, 0.94);
+            --primary-green: #2d6a4f;
+            --accent-green: #40916c;
+            --warm-amber: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(180deg, #95d5b2 0%, #d8f3dc 45%, #fefae0 100%);
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #1b4332;
+        }
+
+        .font-display {
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        /* Tabiat fon dekoratsiyalari */
+        .nature-bg {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .floating-leaf {
+            position: absolute;
+            opacity: 0.18;
+            animation: floatSway 12s infinite ease-in-out;
+        }
+
+        @keyframes floatSway {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(12deg); }
+        }
+
+        /* O'yin maydoni konteyneri */
+        .board-wrapper {
+            position: relative;
+            background: var(--card-bg);
+            border-radius: 28px;
+            box-shadow: 0 14px 35px -5px rgba(27, 67, 50, 0.18), 0 0 0 4px rgba(255, 255, 255, 0.6);
+            padding: 12px;
+            touch-action: none;
+        }
+
+        /* Harflar setkasi */
+        .letter-grid {
+            display: grid;
+            position: relative;
+            z-index: 2;
+        }
+
+        .grid-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 700;
+            color: #1b4332;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.15s ease;
+            border-radius: 50%;
+        }
+
+        .grid-cell.active-letter {
+            color: #ffffff;
+            transform: scale(1.15);
+            text-shadow: 0 1px 3px rgba(0,0,0,0.25);
+        }
+
+        .grid-cell.hint-pulse {
+            animation: hintGlow 1.4s infinite ease-in-out;
+            background: rgba(245, 158, 11, 0.28);
+            box-shadow: 0 0 0 3px #f59e0b;
+        }
+
+        @keyframes hintGlow {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.18); }
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.4); }
+            70% { transform: scale(1.08); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .cell-enter {
+            animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+        }
+
+        /* SVG Kapsula qatlami */
+        .highlight-svg {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* So'zlar ro'yxati chiplari */
+        .word-pill {
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: #ffffff;
+            border: 2px solid #b7e4c7;
+            color: #1b4332;
+        }
+
+        .word-pill.found {
+            background: #40916c;
+            border-color: #2d6a4f;
+            color: #ffffff;
+            transform: scale(0.95);
+            opacity: 0.85;
+            text-decoration: line-through;
+        }
+
+        /* Tugmalar effekti */
+        .btn-3d {
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .btn-3d:active {
+            transform: translateY(3px);
+        }
+
+        /* Yutuq oynasi animatsiyasi */
+        @keyframes modalPop {
+            0% { opacity: 0; transform: scale(0.8) translateY(20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .modal-animate {
+            animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* Konfetti / Barg zarrachalari */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 60;
+            animation: fallLeaf linear forwards;
+        }
+
+        @keyframes fallLeaf {
+            0% { transform: translateY(-10vh) rotate(0deg) scale(1); opacity: 1; }
+            100% { transform: translateY(105vh) rotate(720deg) scale(0.7); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="px-3 py-3 sm:py-5 justify-between">
+
+    <!-- Fon dekoratsiyasi (Tabiat elementlari) -->
+    <div class="nature-bg" aria-hidden="true">
+        <svg class="floating-leaf w-24 h-24 top-8 left-4 text-emerald-700" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 2,11.5 2,13.5C2,15.5 3.75,17.25 3.75,17.25C7,8 17,8 17,8Z"/>
+        </svg>
+        <svg class="floating-leaf w-32 h-32 bottom-12 right-4 text-teal-800" style="animation-delay: -4s;" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 2,11.5 2,13.5C2,15.5 3.75,17.25 3.75,17.25C7,8 17,8 17,8Z"/>
+        </svg>
+        <svg class="floating-leaf w-20 h-20 top-1/3 right-8 text-green-700" style="animation-delay: -7s;" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,14.4 19,16.5 17.3,18C15.9,16.7 14,16 12,16C10,16 8.2,16.7 6.7,18C5,16.5 4,14.4 4,12A8,8 0 0,1 12,4Z"/>
+        </svg>
+    </div>
+
+    <!-- Yuqori boshqaruv paneli (Header) -->
+    <header class="w-full max-w-md z-10 flex flex-col gap-2.5">
+        <div class="flex items-center justify-between bg-white/90 backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-md border-2 border-emerald-100">
+            <!-- Bosqich nishoni -->
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-inner font-display font-bold text-lg" id="level-badge">
+                    1
+                </div>
+                <div>
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Ekologik Sayohat</div>
+                    <div class="font-display font-bold text-base text-emerald-950 leading-tight" id="level-title">1-bosqich: Asosiy Tabiat</div>
+                </div>
+            </div>
+
+            <!-- Tanga va Ovoz tugmalari -->
+            <div class="flex items-center gap-2">
+                <!-- Tangalar hisoblagichi -->
+                <div class="flex items-center gap-1.5 bg-amber-50 border-2 border-amber-300 px-3 py-1 rounded-full shadow-sm">
+                    <span class="text-base">🪙</span>
+                    <span class="font-display font-bold text-amber-800 text-sm" id="coin-count">60</span>
+                </div>
+
+                <!-- Ovozni yoqish/o'chirish -->
+                <button id="sound-btn" class="btn-3d w-9 h-9 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 flex items-center justify-center shadow-sm border border-emerald-200" title="Ovoz">
+                    <span id="sound-icon" class="text-lg">🔊</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Joriy tortilayotgan so'z ko'rsatkichi (Preview Pill) -->
+        <div class="h-9 flex items-center justify-center">
+            <div id="current-selection-pill" class="opacity-0 transition-opacity duration-150 px-5 py-1 rounded-full bg-emerald-700 text-white font-display font-bold text-lg tracking-widest shadow-md">
+                TABIAT
+            </div>
+        </div>
+    </header>
+
+    <!-- Topilishi kerak bo'lgan so'zlar paneli (Word Bank) -->
+    <section class="w-full max-w-md z-10 my-1">
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-3 shadow-sm border border-emerald-200/80">
+            <div class="flex items-center justify-between mb-2 px-1">
+                <span class="text-xs font-extrabold uppercase tracking-wider text-emerald-800 flex items-center gap-1">
+                    🌿 Topiladigan so'zlar (<span id="found-progress">0/6</span>)
+                </span>
+                <button id="level-select-btn" class="text-xs font-bold text-teal-700 hover:text-teal-900 underline">
+                    Bosqichlar
+                </button>
+            </div>
+            <div id="word-bank" class="flex flex-wrap justify-center gap-2">
+                <!-- So'zlar JS orqali qo'shiladi -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Asosiy O'yin Setkasi (Grid) -->
+    <main class="w-full max-w-md flex-1 flex items-center justify-center z-10 my-2">
+        <div id="board-wrapper" class="board-wrapper">
+            <!-- Rangli kapsula chiziqlar uchun SVG qatlami -->
+            <svg id="highlight-svg" class="highlight-svg"></svg>
+            <!-- Harflar katakchalari -->
+            <div id="letter-grid" class="letter-grid"></div>
+        </div>
+    </main>
+
+    <!-- Pastki boshqaruv tugmalari (Yordam va Aralashtirish) -->
+    <footer class="w-full max-w-md z-10 flex items-center justify-center gap-3 pb-2">
+        <button id="hint-btn" class="btn-3d flex items-center gap-2 bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-500 text-amber-950 font-display font-bold px-5 py-2.5 rounded-2xl shadow-[0_4px_0_#b45309] border border-amber-300">
+            <span class="text-xl">💡</span>
+            <span>Yordam</span>
+            <span class="bg-amber-900/15 px-2 py-0.5 rounded-lg text-xs font-extrabold">20 🪙</span>
+        </button>
+
+        <button id="reshuffle-btn" class="btn-3d flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-800 font-display font-bold px-4 py-2.5 rounded-2xl shadow-[0_4px_0_#a7f3d0] border-2 border-emerald-200" title="Setkani yangilash">
+            <span class="text-lg">🔄</span>
+            <span class="text-sm">Qayta tuzish</span>
+        </button>
+    </footer>
+
+    <!-- Xabar oynasi (Toast Notification - alert o'rniga) -->
+    <div id="toast-box" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 -translate-y-3">
+        <div id="toast-msg" class="bg-emerald-900 text-white font-bold text-sm px-4 py-2 rounded-full shadow-lg border border-emerald-400">
+            Xabar
+        </div>
+    </div>
+
+    <!-- Bosqich yakunlandi modali -->
+    <div id="victory-modal" class="fixed inset-0 bg-emerald-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="modal-animate bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border-4 border-emerald-300 relative overflow-hidden">
+            <div class="w-20 h-20 mx-auto mb-3 rounded-full bg-gradient-to-tr from-emerald-400 to-teal-500 flex items-center justify-center text-4xl shadow-lg">
+                🌍
+            </div>
+            <h2 class="font-display font-bold text-2xl text-emerald-950 mb-1">Barakalla!</h2>
+            <p class="text-emerald-700 font-semibold text-sm mb-4" id="victory-subtitle">
+                1-bosqich muvaffaqiyatli yakunlandi!
+            </p>
+
+            <!-- Ekologik fakt kartasi -->
+            <div class="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-3.5 mb-5 text-left">
+                <div class="text-xs font-extrabold uppercase text-emerald-600 mb-1 flex items-center gap-1">
+                    🌱 Ekologik fakt:
+                </div>
+                <p class="text-xs sm:text-sm text-emerald-900 font-semibold leading-relaxed" id="eco-fact-text">
+                    Bitta katta daraxt bir yilda 4 kishiga yetadigan kislorod ishlab chiqaradi!
+                </p>
+            </div>
+
+            <div class="flex items-center justify-center gap-2 mb-5 font-display font-bold text-amber-600 text-lg">
+                <span>Mukofot:</span>
+                <span class="bg-amber-100 px-3 py-1 rounded-full border border-amber-300">+25 🪙</span>
+            </div>
+
+            <button id="next-level-btn" class="btn-3d w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-display font-bold text-lg py-3.5 rounded-2xl shadow-[0_5px_0_#115e59]">
+                Keyingi Bosqich ➔
+            </button>
+        </div>
+    </div>
+
+    <!-- Bosqichlarni tanlash modali -->
+    <div id="levels-modal" class="fixed inset-0 bg-emerald-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="modal-animate bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border-4 border-emerald-200">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-display font-bold text-xl text-emerald-950">🌿 Bosqichlar</h3>
+                <button id="close-levels-btn" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 font-bold text-gray-600">✕</button>
+            </div>
+            <div id="levels-list" class="flex flex-col gap-2.5 max-h-[60vh] overflow-y-auto pr-1">
+                <!-- Bosqichlar ro'yxati -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * EKOLOGIYA: SO'Z QIDIRUVI (Word Search Explorer uslubida)
+         * Barcha mantiq, ovoz sintezi, setka generatsiyasi va sensorli boshqaruv
+         */
+
+        // 1. O'zbekcha ekologik bosqichlar ma'lumotlari
+        const LEVELS = [
+            {
+                id: 1,
+                title: "1-bosqich: Asosiy Tabiat",
+                gridSize: 8,
+                words: ["TABIAT", "DARAXT", "SUV", "HAVO", "GUL", "QUSH"],
+                fact: "Bitta katta daraxt bir yil davomida 4 kishilik oilaga yetadigan toza kislorod ishlab chiqaradi."
+            },
+            {
+                id: 2,
+                title: "2-bosqich: Yer va Suv",
+                gridSize: 9,
+                words: ["DARYO", "OKEAN", "TUPROQ", "TOG", "SAHRO", "BALIQ", "MUZLIK"],
+                fact: "Yer yuzidagi barcha suvlarning atigi 2.5 foizigina chuchuk suv hisoblanadi, shuning uchun uni asrash shart."
+            },
+            {
+                id: 3,
+                title: "3-bosqich: Yashil Energiya",
+                gridSize: 9,
+                words: ["QUYOSH", "SHAMOL", "ENERGIYA", "YASHIL", "QAYTA", "IQLIM", "OZON"],
+                fact: "Quyoshdan Yerga 1 soatda tushadigan energiya butun insoniyatning 1 yillik ehtiyojini qoplashga yetadi!"
+            },
+            {
+                id: 4,
+                title: "4-bosqich: Ekologik Muammolar",
+                gridSize: 10,
+                words: ["CHIQINDI", "TUTUN", "ZAVOD", "IFLOS", "QURGOQ", "XAVF", "ASRASH"],
+                fact: "Plastik shisha tabiatda to'liq chirib ketishi uchun 450 yildan ortiq vaqt kerak bo'ladi."
+            },
+            {
+                id: 5,
+                title: "5-bosqich: O'simlik va Hayvonot",
+                gridSize: 10,
+                words: ["BARG", "ILDIZ", "URUG", "HAYVON", "ARI", "KAPALAK", "BURGUT", "ARCHA"],
+                fact: "Asalarilar dunyodagi oziq-ovqat o'simliklarining qariyb 75 foizini changlatishda muhim rol o'ynaydi."
+            },
+            {
+                id: 6,
+                title: "6-bosqich: Eko-Ekspert",
+                gridSize: 11,
+                words: ["EKOLOGIYA", "BIOSFERA", "TABIAT", "OZONE", "YOMGIR", "BULUT", "CHORVA", "ZAMIN"],
+                fact: "O'rmonlar sayyoramizning 'yashil o'pkasi' bo'lib, karbonat angidrid gazini yutib, iqlimni mo'tadil saqlaydi."
+            }
+        ];
+
+        // Kapsulalar uchun yoqimli tabiat ranglari palitrasi
+        const CAPSULE_COLORS = [
+            "rgba(16, 185, 129, 0.78)",  // Zumrad yashil
+            "rgba(245, 158, 11, 0.78)",  // Quyosh sariq
+            "rgba(14, 165, 233, 0.78)",  // Osmon ko'k
+            "rgba(236, 72, 153, 0.75)",  // Gul pushti
+            "rgba(139, 92, 246, 0.75)",  // Binafsha
+            "rgba(249, 115, 22, 0.78)",  // Apelsin
+            "rgba(20, 184, 166, 0.78)",  // Feruza
+            "rgba(132, 204, 22, 0.80)"   // Laym yashil
+        ];
+
+        // O'zbek lotin alifbosi harflari (bo'sh kataklarni to'ldirish uchun)
+        const UZBEK_LETTERS = "ABDEFGHIJKLMNOPQRSTUVXYZ";
+
+        // O'yin holati (State)
+        let state = {
+            currentLevelIdx: 0,
+            coins: 60,
+            soundEnabled: true,
+            grid: [],
+            size: 8,
+            placedWords: [], // { word, cells: [{r, c}], found: false, color }
+            isDragging: false,
+            startCell: null,
+            currentCell: null,
+            selectedPath: [],
+            activeColor: CAPSULE_COLORS[0],
+            cellSize: 38,
+            hintedCell: null
+        };
+
+        // DOM elementlar
+        const gridEl = document.getElementById("letter-grid");
+        const svgEl = document.getElementById("highlight-svg");
+        const boardWrapper = document.getElementById("board-wrapper");
+        const wordBankEl = document.getElementById("word-bank");
+        const previewPill = document.getElementById("current-selection-pill");
+        const coinCountEl = document.getElementById("coin-count");
+        const levelBadgeEl = document.getElementById("level-badge");
+        const levelTitleEl = document.getElementById("level-title");
+        const foundProgressEl = document.getElementById("found-progress");
+        const victoryModal = document.getElementById("victory-modal");
+        const levelsModal = document.getElementById("levels-modal");
+
+        // 2. Web Audio API - Yoqimli ovoz effektlari generatori
+        const AudioEngine = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === "suspended") {
+                    this.ctx.resume();
+                }
+            },
+            playTone(freq, type = "sine", duration = 0.12, volume = 0.15) {
+                if (!state.soundEnabled) return;
+                try {
+                    this.init();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {
+                    // Ovoz bloklangan bo'lsa e'tibor bermaymiz
+                }
+            },
+            playStep(stepIndex) {
+                // Harf tanlanganda ko'tariluvchi yumshoq nota
+                const baseFreq = 320 + Math.min(stepIndex, 10) * 38;
+                this.playTone(baseFreq, "sine", 0.09, 0.12);
+            },
+            playSuccess() {
+                // So'z topilganda quvnoq akkord
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((n, idx) => {
+                    setTimeout(() => this.playTone(n, "triangle", 0.25, 0.16), idx * 65);
+                });
+            },
+            playVictory() {
+                // Bosqich tugaganda g'alaba kuyi
+                const melody = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+                melody.forEach((n, idx) => {
+                    setTimeout(() => this.playTone(n, "triangle", 0.3, 0.18), idx * 110);
+                });
+            },
+            playHint() {
+                this.playTone(880, "sine", 0.2, 0.14);
+                setTimeout(() => this.playTone(1174.66, "sine", 0.3, 0.14), 100);
+            }
+        };
+
+        // 3. Yordamchi funksiyalar
+        function showToast(text) {
+            const box = document.getElementById("toast-box");
+            const msg = document.getElementById("toast-msg");
+            msg.textContent = text;
+            box.classList.remove("opacity-0", "-translate-y-3");
+            box.classList.add("opacity-100", "translate-y-0");
+            clearTimeout(box._timer);
+            box._timer = setTimeout(() => {
+                box.classList.remove("opacity-100", "translate-y-0");
+                box.classList.add("opacity-0", "-translate-y-3");
+            }, 2200);
+        }
+
+        function updateCoins(delta) {
+            state.coins = Math.max(0, state.coins + delta);
+            coinCountEl.textContent = state.coins;
+        }
+
+        // 4. Setka generatsiyasi (8 yo'nalishda so'zlarni joylashtirish)
+        const DIRECTIONS = [
+            [0, 1],   // O'ngga
+            [1, 0],   // Pastga
+            [1, 1],   // Past-o'ngga diagonal
+            [-1, 1],  // Tepaga-o'ngga diagonal
+            [0, -1],  // Chapga
+            [-1, 0],  // Tepaga
+            [-1, -1], // Tepaga-chapga diagonal
+            [1, -1]   // Past-chapga diagonal
+        ];
+
+        function generatePuzzle(levelData) {
+            const size = levelData.gridSize;
+            state.size = size;
+            let bestBoard = null;
+            let bestPlaced = [];
+
+            // Barcha so'zlar sig'ishi uchun bir necha marta urinib ko'ramiz
+            for (let attempt = 0; attempt < 40; attempt++) {
+                const board = Array.from({ length: size }, () => Array(size).fill(""));
+                const placed = [];
+                // Uzun so'zlarni birinchi joylashtirish osonroq
+                const sortedWords = [...levelData.words].sort((a, b) => b.length - a.length);
+                let allFit = true;
+
+                for (let wIdx = 0; wIdx < sortedWords.length; wIdx++) {
+                    const word = sortedWords[wIdx];
+                    let placedThisWord = false;
+
+                    // Tasodifiy boshlang'ich nuqtalar va yo'nalishlar
+                    const candidates = [];
+                    for (let r = 0; r < size; r++) {
+                        for (let c = 0; c < size; c++) {
+                            for (const [dr, dc] of DIRECTIONS) {
+                                candidates.push({ r, c, dr, dc });
+                            }
+                        }
+                    }
+                    // Aralashtirish (Fisher-Yates)
+                    for (let i = candidates.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+                    }
+
+                    for (const { r, c, dr, dc } of candidates) {
+                        const endR = r + dr * (word.length - 1);
+                        const endC = c + dc * (word.length - 1);
+                        if (endR < 0 || endR >= size || endC < 0 || endC >= size) continue;
+
+                        let canPlace = true;
+                        const cells = [];
+                        for (let i = 0; i < word.length; i++) {
+                            const nr = r + dr * i;
+                            const nc = c + dc * i;
+                            if (board[nr][nc] !== "" && board[nr][nc] !== word[i]) {
+                                canPlace = false;
+                                break;
+                            }
+                            cells.push({ r: nr, c: nc });
+                        }
+
+                        if (canPlace) {
+                            cells.forEach((cell, i) => {
+                                board[cell.r][cell.c] = word[i];
+                            });
+                            placed.push({
+                                word,
+                                cells,
+                                found: false,
+                                color: CAPSULE_COLORS[wIdx % CAPSULE_COLORS.length]
+                            });
+                            placedThisWord = true;
+                            break;
+                        }
+                    }
+
+                    if (!placedThisWord) {
+                        allFit = false;
+                        break;
+                    }
+                }
+
+                if (allFit) {
+                    bestBoard = board;
+                    bestPlaced = placed;
+                    break;
+                }
+            }
+
+            // Bo'sh qolgan kataklarni tasodifiy harflar bilan to'ldiramiz
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (bestBoard[r][c] === "") {
+                        const randChar = UZBEK_LETTERS[Math.floor(Math.random() * UZBEK_LETTERS.length)];
+                        bestBoard[r][c] = randChar;
+                    }
+                }
+            }
+
+            state.grid = bestBoard;
+            // Asl tartibda ko'rsatish uchun saralaymiz
+            state.placedWords = levelData.words.map(w => bestPlaced.find(p => p.word === w));
+            state.hintedCell = null;
+        }
+
+        // 5. Interfeysni chizish (Render)
+        function calculateCellSize() {
+            const maxBoardWidth = Math.min(window.innerWidth - 36, 410);
+            const availableHeight = window.innerHeight - 285;
+            const maxDim = Math.max(260, Math.min(maxBoardWidth, availableHeight));
+            state.cellSize = Math.floor(maxDim / state.size);
+        }
+
+        function renderBoard() {
+            calculateCellSize();
+            const totalPx = state.cellSize * state.size;
+
+            gridEl.style.gridTemplateColumns = `repeat(${state.size}, ${state.cellSize}px)`;
+            gridEl.style.gridRows = `repeat(${state.size}, ${state.cellSize}px)`;
+            gridEl.style.width = `${totalPx}px`;
+            gridEl.style.height = `${totalPx}px`;
+
+            svgEl.setAttribute("width", totalPx);
+            svgEl.setAttribute("height", totalPx);
+            svgEl.setAttribute("viewBox", `0 0 ${totalPx} ${totalPx}`);
+
+            gridEl.innerHTML = "";
+            const fontSize = Math.max(15, Math.floor(state.cellSize * 0.52));
+
+            for (let r = 0; r < state.size; r++) {
+                for (let c = 0; c < state.size; c++) {
+                    const cellDiv = document.createElement("div");
+                    cellDiv.className = "grid-cell cell-enter";
+                    cellDiv.style.width = `${state.cellSize}px`;
+                    cellDiv.style.height = `${state.cellSize}px`;
+                    cellDiv.style.fontSize = `${fontSize}px`;
+                    cellDiv.style.animationDelay = `${(r + c) * 18}ms`;
+                    cellDiv.dataset.r = r;
+                    cellDiv.dataset.c = c;
+                    cellDiv.textContent = state.grid[r][c];
+                    gridEl.appendChild(cellDiv);
+                }
+            }
+
+            renderWordBank();
+            renderHighlights();
+        }
+
+        function renderWordBank() {
+            wordBankEl.innerHTML = "";
+            let foundCount = 0;
+
+            state.placedWords.forEach(item => {
+                if (item.found) foundCount++;
+                const chip = document.createElement("div");
+                chip.className = `word-pill px-3 py-1 rounded-xl font-display font-bold text-xs sm:text-sm tracking-wide shadow-sm ${item.found ? "found" : ""}`;
+                chip.textContent = item.word;
+                wordBankEl.appendChild(chip);
+            });
+
+            foundProgressEl.textContent = `${foundCount}/${state.placedWords.length}`;
+        }
+
+        // SVG kapsula chiziqlarini chizish
+        function renderHighlights() {
+            svgEl.innerHTML = "";
+            const strokeWidth = Math.floor(state.cellSize * 0.74);
+
+            // 1. Topilgan so'zlarning doimiy kapsulalari
+            state.placedWords.forEach(item => {
+                if (item.found && item.cells.length > 0) {
+                    const first = item.cells[0];
+                    const last = item.cells[item.cells.length - 1];
+                    drawCapsule(first, last, item.color, strokeWidth);
+                }
+            });
+
+            // 2. Hozir tortilayotgan (aktiv) kapsula
+            if (state.isDragging && state.selectedPath.length > 0) {
+                const first = state.selectedPath[0];
+                const last = state.selectedPath[state.selectedPath.length - 1];
+                drawCapsule(first, last, state.activeColor, strokeWidth);
+            }
+
+            // Harflarning rangini yangilash
+            const allCells = gridEl.querySelectorAll(".grid-cell");
+            allCells.forEach(el => {
+                const r = parseInt(el.dataset.r);
+                const c = parseInt(el.dataset.c);
+
+                const isInFound = state.placedWords.some(
+                    w => w.found && w.cells.some(cell => cell.r === r && cell.c === c)
+                );
+                const isInCurrent = state.selectedPath.some(cell => cell.r === r && cell.c === c);
+
+                if (isInFound || isInCurrent) {
+                    el.classList.add("active-letter");
+                } else {
+                    el.classList.remove("active-letter");
+                }
+
+                if (state.hintedCell && state.hintedCell.r === r && state.hintedCell.c === c) {
+                    el.classList.add("hint-pulse");
+                } else {
+                    el.classList.remove("hint-pulse");
+                }
+            });
+        }
+
+        function drawCapsule(startCell, endCell, color, strokeWidth) {
+            const x1 = (startCell.c + 0.5) * state.cellSize;
+            const y1 = (startCell.r + 0.5) * state.cellSize;
+            const x2 = (endCell.c + 0.5) * state.cellSize;
+            const y2 = (endCell.r + 0.5) * state.cellSize;
+
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", x1);
+            line.setAttribute("y1", y1);
+            line.setAttribute("x2", x2);
+            line.setAttribute("y2", y2);
+            line.setAttribute("stroke", color);
+            line.setAttribute("stroke-width", strokeWidth);
+            line.setAttribute("stroke-linecap", "round");
+            svgEl.appendChild(line);
+        }
+
+        // 6. Sichqoncha va Sensor (Touch) boshqaruvi - 8 yo'nalishga aniq yopishish (Snapping)
+        function getCellFromPointer(clientX, clientY) {
+            const rect = gridEl.getBoundingClientRect();
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            const c = Math.floor(x / state.cellSize);
+            const r = Math.floor(y / state.cellSize);
+
+            if (r >= 0 && r < state.size && c >= 0 && c < state.size) {
+                return { r, c };
+            }
+            return null;
+        }
+
+        // Boshlang'ich va joriy nuqta orasidagi eng yaqin 8 yo'nalishli to'g'ri chiziqni hisoblash
+        function computeSnappedPath(start, end) {
+            if (!start || !end) return [];
+            const dr = end.r - start.r;
+            const dc = end.c - start.c;
+
+            if (dr === 0 && dc === 0) return [start];
+
+            // Burchakni 45 graduslik sektorlarga yaxlitlaymiz
+            const angle = Math.atan2(dr, dc);
+            const octant = Math.round(angle / (Math.PI / 4));
+            const stepR = Math.round(Math.sin(octant * (Math.PI / 4)));
+            const stepC = Math.round(Math.cos(octant * (Math.PI / 4)));
+
+            const steps = Math.max(Math.abs(dr), Math.abs(dc));
+            const path = [];
+
+            for (let i = 0; i <= steps; i++) {
+                const nr = start.r + stepR * i;
+                const nc = start.c + stepC * i;
+                if (nr < 0 || nr >= state.size || nc < 0 || nc >= state.size) break;
+                path.push({ r: nr, c: nc });
+            }
+            return path;
+        }
+
+        function handlePointerDown(e) {
+            const point = e.touches ? e.touches[0] : e;
+            const cell = getCellFromPointer(point.clientX, point.clientY);
+            if (!cell) return;
+
+            AudioEngine.init();
+            state.isDragging = true;
+            state.startCell = cell;
+            state.currentCell = cell;
+            state.selectedPath = [cell];
+
+            // Navbatdagi topilmagan so'z rangini tanlaymiz
+            const nextUnfound = state.placedWords.find(w => !w.found);
+            state.activeColor = nextUnfound ? nextUnfound.color : CAPSULE_COLORS[0];
+
+            AudioEngine.playStep(0);
+            updateSelectionUI();
+        }
+
+        function handlePointerMove(e) {
+            if (!state.isDragging) return;
+            if (e.cancelable) e.preventDefault();
+
+            const point = e.touches ? e.touches[0] : e;
+            const cell = getCellFromPointer(point.clientX, point.clientY);
+            if (!cell) return;
+
+            const newPath = computeSnappedPath(state.startCell, cell);
+            const isDifferent =
+                newPath.length !== state.selectedPath.length ||
+                newPath.some((p, idx) => p.r !== state.selectedPath[idx].r || p.c !== state.selectedPath[idx].c);
+
+            if (isDifferent && newPath.length > 0) {
+                state.selectedPath = newPath;
+                AudioEngine.playStep(newPath.length - 1);
+                updateSelectionUI();
+            }
+        }
+
+        function handlePointerUp() {
+            if (!state.isDragging) return;
+            state.isDragging = false;
+
+            const selectedWord = state.selectedPath.map(p => state.grid[p.r][p.c]).join("");
+            const reversedWord = selectedWord.split("").reverse().join("");
+
+            // Topilmagan so'zlar orasidan tekshiramiz
+            const matchedItem = state.placedWords.find(
+                item => !item.found && (item.word === selectedWord || item.word === reversedWord)
+            );
+
+            if (matchedItem) {
+                matchedItem.found = true;
+                // Agar yordam ko'rsatilgan katak topilgan bo'lsa, o'chiramiz
+                if (
+                    state.hintedCell &&
+                    matchedItem.cells.some(c => c.r === state.hintedCell.r && c.c === state.hintedCell.c)
+                ) {
+                    state.hintedCell = null;
+                }
+
+                AudioEngine.playSuccess();
+                updateCoins(5); // Har bir topilgan so'z uchun +5 tanga
+                renderWordBank();
+
+                // Barcha so'zlar topildimi?
+                if (state.placedWords.every(w => w.found)) {
+                    setTimeout(triggerLevelComplete, 450);
+                }
+            }
+
+            state.selectedPath = [];
+            state.startCell = null;
+            previewPill.classList.add("opacity-0");
+            renderHighlights();
+        }
+
+        function updateSelectionUI() {
+            const text = state.selectedPath.map(p => state.grid[p.r][p.c]).join("");
+            if (text.length > 0) {
+                previewPill.textContent = text;
+                previewPill.style.backgroundColor = state.activeColor.replace(/0\.\d+\)/, "0.95)");
+                previewPill.classList.remove("opacity-0");
+            } else {
+                previewPill.classList.add("opacity-0");
+            }
+            renderHighlights();
+        }
+
+        // 7. Yordam (Hint) tizimi
+        function useHint() {
+            const unfound = state.placedWords.filter(w => !w.found);
+            if (unfound.length === 0) return;
+
+            if (state.coins < 20) {
+                showToast("Tangalar yetarli emas! (20 🪙 kerak)");
+                return;
+            }
+
+            updateCoins(-20);
+            AudioEngine.playHint();
+
+            const targetWord = unfound[0];
+            state.hintedCell = targetWord.cells[0];
+            showToast(`"${targetWord.word}" so'zining 1-harfi belgilandi!`);
+            renderHighlights();
+        }
+
+        // 8. Bosqichni yuklash va Yakunlash
+        function loadLevel(index) {
+            state.currentLevelIdx = index % LEVELS.length;
+            const levelData = LEVELS[state.currentLevelIdx];
+
+            levelBadgeEl.textContent = levelData.id;
+            levelTitleEl.textContent = levelData.title;
+
+            generatePuzzle(levelData);
+            renderBoard();
+        }
+
+        function triggerLevelComplete() {
+            AudioEngine.playVictory();
+            updateCoins(25); // Bosqich mukofoti
+            spawnLeafConfetti();
+
+            const levelData = LEVELS[state.currentLevelIdx];
+            document.getElementById("victory-subtitle").textContent = `${levelData.title} muvaffaqiyatli yakunlandi!`;
+            document.getElementById("eco-fact-text").textContent = levelData.fact;
+
+            victoryModal.classList.remove("hidden");
+            victoryModal.classList.add("flex");
+        }
+
+        function spawnLeafConfetti() {
+            const emojis = ["🍃", "🌿", "🌱", "🍀", "✨", "🌼"];
+            for (let i = 0; i < 28; i++) {
+                const el = document.createElement("div");
+                el.className = "particle text-2xl";
+                el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                el.style.left = `${Math.random() * 100}vw`;
+                el.style.animationDuration = `${2.2 + Math.random() * 2}s`;
+                el.style.animationDelay = `${Math.random() * 0.6}s`;
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), 4500);
+            }
+        }
+
+        // Bosqichlar ro'yxatini modalda ko'rsatish
+        function openLevelsModal() {
+            const list = document.getElementById("levels-list");
+            list.innerHTML = "";
+            LEVELS.forEach((lvl, idx) => {
+                const btn = document.createElement("button");
+                const isCurrent = idx === state.currentLevelIdx;
+                btn.className = `w-full text-left px-4 py-3 rounded-2xl border-2 flex items-center justify-between transition ${
+                    isCurrent
+                        ? "bg-emerald-50 border-emerald-500 text-emerald-950 font-bold"
+                        : "bg-white border-gray-200 hover:border-emerald-300 text-gray-800 font-semibold"
+                }`;
+                btn.innerHTML = `
+                    <div>
+                        <div class="font-display text-sm">${lvl.title}</div>
+                        <div class="text-xs text-emerald-600">${lvl.words.length} ta so'z • ${lvl.gridSize}x${lvl.gridSize}</div>
+                    </div>
+                    <span class="text-lg">${isCurrent ? "📍" : "🌿"}</span>
+                `;
+                btn.onclick = () => {
+                    levelsModal.classList.add("hidden");
+                    levelsModal.classList.remove("flex");
+                    loadLevel(idx);
+                };
+                list.appendChild(btn);
+            });
+            levelsModal.classList.remove("hidden");
+            levelsModal.classList.add("flex");
+        }
+
+        // 9. Hodisa tinglovchilari (Event Listeners)
+        boardWrapper.addEventListener("mousedown", handlePointerDown);
+        window.addEventListener("mousemove", handlePointerMove);
+        window.addEventListener("mouseup", handlePointerUp);
+
+        boardWrapper.addEventListener("touchstart", handlePointerDown, { passive: false });
+        window.addEventListener("touchmove", handlePointerMove, { passive: false });
+        window.addEventListener("touchend", handlePointerUp);
+
+        document.getElementById("hint-btn").addEventListener("click", useHint);
+
+        document.getElementById("reshuffle-btn").addEventListener("click", () => {
+            loadLevel(state.currentLevelIdx);
+            showToast("Setka qayta tuzildi!");
+        });
+
+        document.getElementById("sound-btn").addEventListener("click", () => {
+            state.soundEnabled = !state.soundEnabled;
+            document.getElementById("sound-icon").textContent = state.soundEnabled ? "🔊" : "🔇";
+            showToast(state.soundEnabled ? "Ovoz yoqildi" : "Ovoz o'chirildi");
+        });
+
+        document.getElementById("next-level-btn").addEventListener("click", () => {
+            victoryModal.classList.add("hidden");
+            victoryModal.classList.remove("flex");
+            loadLevel(state.currentLevelIdx + 1);
+        });
+
+        document.getElementById("level-select-btn").addEventListener("click", openLevelsModal);
+        document.getElementById("close-levels-btn").addEventListener("click", () => {
+            levelsModal.classList.add("hidden");
+            levelsModal.classList.remove("flex");
+        });
+
+        window.addEventListener("resize", () => {
+            renderBoard();
+        });
+
+        // O'yinni boshlash
+        window.onload = () => {
+            loadLevel(0);
+        };
+    </script>
+</body>
+</html>
